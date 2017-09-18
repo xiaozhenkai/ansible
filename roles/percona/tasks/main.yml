@@ -1,0 +1,9 @@
+- name: Configuring Percona Repository on Red Hat Enterprise Linux and CentOS¶
+  copy: src=percona-release-0.1-4.noarch.rpm dest=/tmp/percona-release-0.1-4.noarch.rpm
+- name: Install Percona repository
+  yum: name=/tmp/percona-release-0.1-4.noarch.rpm
+- name: Install Percona-Server-56
+  yum: name=Percona-Server-server-56 state=present
+  tags: instPercona-Server
+- name: start Percona-Server
+  service: name=mysql state=started

@@ -1,0 +1,2 @@
+configure: ./configure --enable-server --enable-agent --with-mysql={{ basedir }}/bin/mysql_config --enable-ipv6 --with-net-snmp --with-libcurl --with-libxml2 --with-unixodbc --with-ssh2 --with-openipmi --with-openssl 
+

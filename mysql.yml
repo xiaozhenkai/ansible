@@ -1,0 +1,4 @@
+- hosts: 192.168.40.211
+  remote_user: root
+  roles:
+  - mysql

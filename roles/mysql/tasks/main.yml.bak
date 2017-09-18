@@ -1,0 +1,72 @@
+- name: Add mysql group
+  group: name=mysql
+- name: Add mysql user
+  user: name=mysql group=mysql shell=/sbin/nologin home=/home/mysql
+- name: Intstall lnmp base package
+  yum: name={{ item }} state=present
+  with_items:
+  - make
+  - gcc
+  - gcc-c++
+  - flex
+  - bison
+  - file
+  - libtool
+  - libtool-libs
+  - autoconf
+  - kernel-devel
+  - libjpeg
+  - libjpeg-devel
+  - libpng
+  - libpng-devel
+  - libpng10
+  - libpng10-devel
+  - gd
+  - gd-devel
+  - freetype
+  - freetype-devel
+  - libxml2
+  - libxml2-devel
+  - zlib
+  - zlib-devel
+  - glib2
+  - glib2-devel
+  - bzip2
+  - bzip2-devel
+  - libevent
+  - libevent-devel
+  - ncurses
+  - ncurses-devel
+  - curl
+  - curl-devel
+  - e2fsprogs
+  - e2fsprogs-devel
+  - krb5-devel
+  - libidn
+  - libidn-devel
+  - openssl
+  - openssl-devel
+  - gettext
+  - gettext-devel
+  - ncurses-devel
+  - gmp-devel
+  - unzip
+  - libcap
+  - lsof
+  - cmake
+  ignore_errors: True
+- name: create mysql directory
+  file: name={{ datadir }} state=directory
+  tags: datadir
+- name: copy mysql.tar.gz to remote
+  copy: src=mysql-{{ mysql_version }}.tar.gz dest=/usr/local/src/mysql-{{ mysql_version }}.tar.gz
+- name: tar mysql.tar.gz and install mysql
+  shell: "cd /usr/local/src/ && tar xf mysql-{{ mysql_version }}.tar.gz && cd mysql-5.6.36 && {{ configure }} && make && make install"
+- name: copy my.cnf to remote ip 
+  copy: src=my.cnf dest=/etc/my.cnf
+- name: Initialize the database
+  shell: "{{ basedir}}/scripts/mysql_install_db --basedir={{ basedir}} --{{ datadir }} --user=mysql"
+- name: copy mysqld to remote
+  template: src=mysqld.j2 dest=/etc/init.d/mysqld mode=0755
+- name: start mysql service
+  service: name=mysqld state=started enabled=true

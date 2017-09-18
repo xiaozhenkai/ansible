@@ -1,0 +1,28 @@
+- name: Install mcrypt libmcrypt-devel mhash
+  yum: name={{ item }} state=present
+  with_items:
+  - mcrypt
+  - libmcrypt-devel
+  - mhash
+- name: Copy libconv to remote
+  copy: src=libiconv-1.14.tar.gz dest=/usr/local/src/libiconv-1.14.tar.gz 
+- name: Install libiconv
+  shell: cd /usr/local/src/ && tar xf libiconv-1.14.tar.gz && cd libiconv-1.14 && ./configure --prefix=/usr/local/libiconv && make && make install 
+- name: Copy php to remote
+  copy: src=php-{{ php_version }}.tar.gz dest=/usr/local/src/php-{{ php_version }}.tar.gz
+- name: Install php
+  shell: "cd /usr/local/src/ && tar xf php-{{ php_version }}.tar.gz && cd php-{{ php_version }} && {{ configure }} && make && make install"
+- name: copy php conf to remote
+  copy: src={{ item }} dest=/usr/local/php/etc/
+  with_items:
+  - php-fpm.conf
+  - php.ini
+  tags: instconf
+- name: copy init.php-fpm to remote
+  copy: src=init.d.php-fpm dest=/etc/init.d/php-fpm mode=755 
+- name: add www group
+  group: name=www
+- name: add www user
+  user: name=www group=www shell=/sbin/nologin
+- name: start php-fpm service
+  service: name=php-fpm state=started enabled=true

@@ -1,0 +1,75 @@
+- name: creat zabbix_mysql user
+  shell: mysql -uroot {{ item }}
+  with_items:
+  - -e "CREATE DATABASE zabbix CHARACTER SET utf8 COLLATE utf8_bin;"
+  - -e "GRANT ALL PRIVILEGES ON zabbix.* TO zabbix@localhost IDENTIFIED BY 'zabbix';"
+  - -e "flush privileges;"
+- name: Install zabbix Repo
+  shell: rpm -ivh http://repo.webtatic.com/yum/el6/latest.rpm
+- name: Install httpd php56
+  yum: name={{ item }} state=present
+  with_items:
+  - httpd
+  - php56w
+  - php56w-gd
+  - php56w-mysql
+  - php56w-bcmath
+  - php56w-mbstring
+  - php56w-xml
+  - php56w-ldap
+- name: Copy php.ini to remote
+  copy: src=php.ini dest=/etc/php.ini
+- name: start httpd service
+  service: name=httpd state=started enabled=true
+- name: set http iptables
+  shell: "iptables -I INPUT -p tcp --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT"
+- name: save iptables filters
+  shell: "iptables-save > /etc/sysconfig/iptables"
+- name: add zabbix group
+  group: name=zabbix
+- name: add zabbix user
+  user: name=zabbix group=zabbix
+- name: create zabbix directory
+  file: name=/home/zabbix/downloads state=directory
+- name: wget zabbix source file and Import zabbix database
+  shell: "cd /home/zabbix/downloads ; test -f zabbix-3.0.10.tar.gz || wget https://nchc.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/3.0.10/zabbix-3.0.10.tar.gz ; tar -zxvf zabbix-3.0.10.tar.gz ; cd zabbix-3.0.10/database/mysql ; mysql -u zabbix -pzabbix zabbix < schema.sql && mysql -u zabbix -pzabbix zabbix < images.sql && mysql -u zabbix -pzabbix zabbix < data.sql"
+- name: additional packages
+  yum: name={{ item }} state=present
+  with_items:
+  - gcc
+  - libxml2-devel
+  - unixODBC-devel
+  - net-snmp-devel
+  - libcurl-devel
+  - libssh2-devel
+  - OpenIPMI-devel
+  - openssl-devel
+  - openldap-devel
+- name: Configure all componets required for Zabbix and Install Zabbix
+  shell: "cd /home/zabbix/downloads/zabbix-3.0.10 && {{ configure }} && make install"
+- name: copy zabbix_server.conf to remote
+  copy: src=zabbix_server.conf dest=/usr/local/etc/zabbix_server.conf
+- name: create zabbix_html direcotry
+  file: name=/var/www/html/zabbix state=directory
+- name: copy zabbix php files to zabbix_dir
+  shell: "cd /home/zabbix/downloads/zabbix-3.0.10/frontends/php/ && cp -a . /var/www/html/zabbix/ && chown -R     apache:apache /var/www/html/zabbix && chmod +x /var/www/html/zabbix/conf/"
+- name: Add Zabbix server and Zabbix agent to startup scripts
+  shell: "cp /home/zabbix/downloads/zabbix-3.0.10/misc/init.d/fedora/core/{{ item }} /etc/init.d/{{ item }}"
+  with_items:
+  - zabbix_server
+  - zabbix_agentd
+- name: link mysqlclint.so.18
+  file: src=/usr/local/mysql/lib/libmysqlclient.so.18 dest=/usr/lib64/libmysqlclient.so.18 state=link
+- name: Add Zabbix server and Zabbix agent as services
+  service: name={{ item }} state=started enabled=true
+  with_items:
+  - httpd
+  - mysqld
+  - zabbix_server
+  - zabbix_agentd
+
+- name: create mysql_link directory
+  file: name=/var/lib/mysql/ state=directory
+- name: link mysql.sock
+  file: src=/tmp/mysql.sock dest=/var/lib/mysql/mysql.sock state=link 
+

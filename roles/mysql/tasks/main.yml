@@ -1,0 +1,85 @@
+- name: Add mysql group
+  group: name=mysql
+- name: Add mysql user
+  user: name=mysql group=mysql shell=/sbin/nologin home=/home/mysql
+- name: Intstall lnmp base package
+  yum: name={{ item }} state=present
+  with_items:
+  - make
+  - gcc
+  - gcc-c++
+  - flex
+  - bison
+  - file
+  - libtool
+  - libtool-libs
+  - autoconf
+  - kernel-devel
+  - libjpeg
+  - libjpeg-devel
+  - libpng
+  - libpng-devel
+  - gd
+  - gd-devel
+  - freetype
+  - freetype-devel
+  - libxml2
+  - libxml2-devel
+  - zlib
+  - zlib-devel
+  - glib2
+  - glib2-devel
+  - bzip2
+  - bzip2-devel
+  - libevent
+  - libevent-devel
+  - ncurses
+  - ncurses-devel
+  - curl
+  - curl-devel
+  - e2fsprogs
+  - e2fsprogs-devel
+  - krb5-devel
+  - libidn
+  - libidn-devel
+  - openssl
+  - openssl-devel
+  - gettext
+  - gettext-devel
+  - ncurses-devel
+  - gmp-devel
+  - unzip
+  - libcap
+  - lsof
+  - cmake
+  ignore_errors: True
+  tags: base
+- name: Create mysql datadir
+  file: name={{ datadir }} state=directory
+- name: Copy mysql.tar.gz to remote
+  unarchive: src=mysql-{{ mysql_version }}.tar.gz dest=/usr/local/src/
+- name: tar mysql.tar.gz and install mysql
+  shell: cd /usr/local/src/mysql-{{ mysql_version }} && {{ configure }} && make && make install
+- name: Change ownership of mysql installation
+  file: name={{ basedir }} owner=mysql group=mysql state=directory recurse=yes
+- name: Copy my.cnf to remote ip 
+  copy: src=my.cnf dest=/etc/my.cnf
+- name: Create mysql command soft link
+  file: src={{ basedir }}/bin/mysql dest=/usr/bin/mysql state=link force=yes
+  notify: restart mysql service
+- name: Initialization mysql databases
+  shell: "{{ basedir }}/scripts/mysql_install_db --basedir={{ basedir}} --datadir={{ datadir }} --user=mysql"
+  tags: initial_db
+- name: copy mysqld to remote
+  template: src=mysqld.j2 dest=/etc/init.d/mysqld mode=0755
+- name: start mysql service
+  service: name=mysqld state=started enabled=true
+  tags: start_db
+- name: Enhance database security
+  shell: /usr/bin/mysql {{ item }}
+  with_items:
+  - -e "update mysql.user set password=password('{{ passwd }}') where host='localhost' and user='root';"
+  - -e "update mysql.user set password=password('{{ passwd }}') where host='127.0.0.1' and user='root';"
+  - -e "delete from mysql.user where password='';"
+  - -e "flush privileges;"
+  tags: del_dbuser
