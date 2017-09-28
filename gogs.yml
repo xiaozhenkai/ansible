@@ -1,0 +1,22 @@
+- hosts: gogs
+  remote_user: root
+  tasks:
+  - name: Create gogs user
+    user: name=git state=present
+  - name: Download gogs and untar
+    shell: "cd /home/git && wget https://dl.gogs.io/0.11.29/linux_amd64.tar.gz && tar xf linux_amd64.tar.gz && chown -R git:git /home/git/gogs"
+  - name: install mysql-server
+    yum: pkg=mysql-server state=present
+  - name: start mysql service
+    service: name=mysqld state=started
+  - name: import gogs database
+    shell: mysql -uroot {{ item }}
+    with_items:
+    - -e "DROP DATABASE IF EXISTS gogs;"
+    - -e "CREATE DATABASE IF NOT EXISTS gogs CHARACTER SET utf8 COLLATE utf8_general_ci;"
+    - -e "grant all on gogs.* to 'gogs'@'localhost' identified by 'gogs';"
+    - -e "flush privileges;"
+  - name: init.gogs
+    shell: cp /home/git/gogs/scripts/init/centos/gogs /etc/init.d/gogs && chmod 755 /etc/init.d/gogs && chkconfig --add gogs && chkconfig gogs on
+  - name: start gogs
+    service: name=gogs state=started system=True

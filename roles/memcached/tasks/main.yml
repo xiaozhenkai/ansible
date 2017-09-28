@@ -1,0 +1,8 @@
+- name: install memcached
+  yum: name=memcached state=latest
+- name: copy the memecached conf to remote ip 
+  template: src=memcached.j2 dest=/etc/sysconfig/memcached
+  tags: mcconf
+  notify: reload memcached
+- name: start memcached service
+  service: name=memcached state=started enabled=true
